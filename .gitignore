@@ -1,4 +1,4 @@
-# Dependencias
+﻿# Dependencias
 node_modules/
 
 # Archivos de compilación
@@ -8,9 +8,8 @@ dist/
 
 # Variables de entorno
 .env
-.env.local
-.env.development.local
-.env.production.local
+.env.*
+!.env.example
 
 # Logs
 logs/
@@ -28,7 +27,7 @@ temp/
 .DS_Store
 Thumbs.db
 
-# Configuración de VS Code (opcional)
+# Configuración de VS Code
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -50,11 +49,11 @@ vite.config.timestamp-*
 *.pem
 *.key
 
-# SQLite (por si se usa en pruebas)
+# Bases de datos locales
 *.sqlite
 *.db
 
-# Archivos subidos localmente (si algún día los usas)
+# Archivos subidos localmente
 uploads/
 *.bak
 *.tmp
