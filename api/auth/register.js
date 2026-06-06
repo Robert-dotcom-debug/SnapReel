@@ -32,6 +32,7 @@ export default async function handler(req, res) {
 
     const user = records[0].get("u").properties;
     const token = createToken(user);
+    delete user.password;
 
     return res.status(201).json({ user, token });
   } catch (error) {

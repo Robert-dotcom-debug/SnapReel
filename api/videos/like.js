@@ -10,6 +10,27 @@ export default async function handler(req, res) {
     const user = verifyToken(req);
     const { videoId } = req.body;
 
+    const existing = await runQuery(
+      `
+      MATCH (u:Usuario {id: $userId})-[like:DIO_LIKE]->(v:Video {id: $videoId})
+      RETURN like
+      LIMIT 1
+      `,
+      { userId: user.id, videoId }
+    );
+
+    if (existing.length > 0) {
+      await runQuery(
+        `
+        MATCH (u:Usuario {id: $userId})-[like:DIO_LIKE]->(v:Video {id: $videoId})
+        DELETE like
+        `,
+        { userId: user.id, videoId }
+      );
+
+      return res.json({ liked: false, message: "Like eliminado" });
+    }
+
     await runQuery(
       `
       MATCH (u:Usuario {id: $userId})
@@ -19,8 +40,8 @@ export default async function handler(req, res) {
       { userId: user.id, videoId }
     );
 
-    return res.json({ message: "Like registrado" });
+    return res.json({ liked: true, message: "Like registrado" });
   } catch (error) {
-    return res.status(500).json({ message: "Error al dar like" });
+    return res.status(500).json({ message: "Error al actualizar like" });
   }
 }

@@ -31,11 +31,12 @@ export default async function handler(req, res) {
       const { videoId, text, parentCommentId } = req.body;
 
       if (parentCommentId) {
-        await runQuery(
+        const records = await runQuery(
           `
           MATCH (u:Usuario {id: $userId})
           MATCH (v:Video {id: $videoId})
           MATCH (parent:Comentario {id: $parentCommentId})
+          WHERE NOT (parent)-[:RESPONDE_A]->(:Comentario)
           CREATE (c:Comentario {
             id: randomUUID(),
             text: $text,
@@ -48,6 +49,10 @@ export default async function handler(req, res) {
           `,
           { userId: user.id, videoId, text, parentCommentId }
         );
+
+        if (records.length === 0) {
+          return res.status(400).json({ message: "No se puede responder a una respuesta" });
+        }
       } else {
         await runQuery(
           `

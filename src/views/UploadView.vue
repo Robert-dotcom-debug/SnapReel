@@ -1,23 +1,41 @@
 <template>
   <section class="upload-page">
     <form class="upload-card" @submit.prevent="uploadVideo">
+      <div class="form-kicker">
+        <UploadCloud :size="18" />
+        <span>Nuevo clip</span>
+      </div>
       <h1>Subir video</h1>
+      <p class="form-copy">Publica momentos cortos, directos y listos para moverse en el feed.</p>
 
-      <input v-model="title" placeholder="Título" required />
-      <textarea v-model="description" placeholder="Descripción"></textarea>
-      <input type="file" accept="video/*" @change="handleFile" required />
+      <label>
+        <span>Título</span>
+        <input v-model="title" placeholder="Nombre del video" required />
+      </label>
+      <label>
+        <span>Descripción</span>
+        <textarea v-model="description" placeholder="Cuéntale algo al feed"></textarea>
+      </label>
+      <label class="file-drop">
+        <Video :size="24" />
+        <span>{{ file ? file.name : "Selecciona un video" }}</span>
+        <input type="file" accept="video/*" @change="handleFile" required />
+      </label>
 
       <button :disabled="loading">
+        <LoaderCircle v-if="loading" :size="18" class="spin" />
+        <UploadCloud v-else :size="18" />
         {{ loading ? "Subiendo..." : "Publicar" }}
       </button>
 
-      <p v-if="message">{{ message }}</p>
+      <p v-if="message" class="status-message">{{ message }}</p>
     </form>
   </section>
 </template>
 
 <script setup>
 import { ref } from "vue";
+import { LoaderCircle, UploadCloud, Video } from "lucide-vue-next";
 import api from "../services/api";
 
 const title = ref("");
