@@ -152,7 +152,7 @@ async function unfollowUser() {
   actionLoading.value = true;
 
   try {
-    await api.post("/api/users/unfollow", { userId: route.params.userId });
+    await api.delete("/api/users/follow", { data: { userId: route.params.userId } });
     stats.value = {
       ...stats.value,
       isFollowing: false,
