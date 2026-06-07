@@ -1,9 +1,10 @@
 <template>
   <section class="feed">
-    <article v-for="video in videos" :key="video.id" class="video-card">
-      <button v-if="showFollowButton(video)" class="follow-button" @click="followUser(video)">
-        Seguir
-      </button>
+    <article v-if="video" class="video-card">
+      <RouterLink class="video-back-link" to="/account">
+        <ArrowLeft :size="17" />
+        Cuenta
+      </RouterLink>
 
       <div class="video-author">
         <RouterLink class="author-name" :to="profileRoute(video)">
@@ -20,14 +21,12 @@
 
       <video
         :src="video.videoUrl"
-        :data-video-id="video.id"
         class="video-player"
         controls
         loop
         playsinline
-        @play="registerView(video.id)"
-        @pause="handleVideoPause(video.id)"
-        @pointerup="handleVideoTap(video.id, $event)"
+        @play="registerView"
+        @pointerup="handleVideoTap"
       ></video>
 
       <div class="video-info">
@@ -51,18 +50,18 @@
           class="action-button"
           :class="{ active: video.likedByMe }"
           aria-label="Impulsar"
-          @click="like(video)"
+          @click="like"
         >
           <Leaf :size="24" />
         </button>
         <span>{{ video.likes }}</span>
 
-        <button class="action-button" aria-label="Comentarios" @click="openComments(video)">
+        <button class="action-button" aria-label="Comentarios" @click="openComments">
           <MessageSquareText :size="24" />
         </button>
         <span>{{ video.comentarios }}</span>
 
-        <button class="action-button" aria-label="Compartir" @click="share(video)">
+        <button class="action-button" aria-label="Compartir" @click="share">
           <Waypoints :size="23" />
         </button>
 
@@ -70,7 +69,7 @@
       </div>
     </article>
 
-    <div v-if="selectedVideo" class="comments-backdrop" @click.self="closeComments">
+    <div v-if="commentsOpen && video" class="comments-backdrop" @click.self="closeComments">
       <div class="comments-panel">
         <div class="panel-header">
           <h3>Comentarios</h3>
@@ -115,25 +114,30 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
-import { CircleX, Leaf, MessageSquareText, Send, Waypoints, X } from "lucide-vue-next";
+import { computed, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+import {
+  ArrowLeft,
+  CircleX,
+  Leaf,
+  MessageSquareText,
+  Send,
+  Waypoints,
+  X,
+} from "lucide-vue-next";
 import api from "../services/api";
 import { useAuthStore } from "../stores/auth";
 import { descriptionParts } from "../utils/hashtags";
 
+const route = useRoute();
 const auth = useAuthStore();
-const videos = ref([]);
-const selectedVideo = ref(null);
+const video = ref(null);
+const commentsOpen = ref(false);
 const comments = ref([]);
 const commentText = ref("");
 const replyTarget = ref(null);
 const viewedVideoIds = new Set();
-const manuallyPausedVideoIds = new Set();
-const autoPausedVideoIds = new Set();
-let playbackObserver = null;
-let currentVisibleVideoId = null;
 let tapTimer = null;
-let lastTappedVideoId = null;
 
 const commentThreads = computed(() => {
   const parents = comments.value
@@ -151,50 +155,38 @@ const commentThreads = computed(() => {
 });
 
 const commentPlaceholder = computed(() => {
-  if (!replyTarget.value) {
-    return "Escribe un comentario...";
-  }
-
+  if (!replyTarget.value) return "Escribe un comentario...";
   return `Responde a @${replyTarget.value.autor}`;
 });
 
-async function loadVideos() {
-  const { data } = await api.get("/api/videos");
-  videos.value = data;
-  await nextTick();
-  setupAutoPlayback();
+async function loadVideo() {
+  const { data } = await api.get(`/api/videos/detail?videoId=${route.params.videoId}`);
+  video.value = data;
 }
 
-async function like(video) {
-  const { data } = await api.post("/api/videos/like", { videoId: video.id });
-  video.likedByMe = data.liked;
-  video.likes += data.liked ? 1 : -1;
-  if (video.likes < 0) video.likes = 0;
-  await loadVideos();
+async function like() {
+  const { data } = await api.post("/api/videos/like", { videoId: video.value.id });
+  video.value.likedByMe = data.liked;
+  video.value.likes += data.liked ? 1 : -1;
+  if (video.value.likes < 0) video.value.likes = 0;
 }
 
-async function followUser(video) {
-  await api.post("/api/users/follow", { userId: video.autorId });
-  video.isFollowing = true;
-  await loadVideos();
+async function registerView() {
+  if (viewedVideoIds.has(video.value.id)) return;
+
+  viewedVideoIds.add(video.value.id);
+  await api.post("/api/videos/view", { videoId: video.value.id });
 }
 
-async function registerView(videoId) {
-  if (viewedVideoIds.has(videoId)) return;
-
-  viewedVideoIds.add(videoId);
-  await api.post("/api/videos/view", { videoId });
-}
-
-async function openComments(video) {
-  selectedVideo.value = video;
+async function openComments() {
+  commentsOpen.value = true;
   cancelReply();
-  const { data } = await api.get(`/api/comments?videoId=${video.id}`);
+  const { data } = await api.get(`/api/comments?videoId=${video.value.id}`);
   comments.value = data;
 }
 
 function closeComments() {
-  selectedVideo.value = null;
+  commentsOpen.value = false;
   comments.value = [];
   cancelReply();
 }
@@ -203,15 +195,15 @@ async function sendComment() {
   if (!commentText.value.trim()) return;
 
   await api.post("/api/comments", {
-    videoId: selectedVideo.value.id,
+    videoId: video.value.id,
     text: commentText.value,
     parentCommentId: replyTarget.value?.id || null,
   });
 
   commentText.value = "";
   cancelReply();
-  await openComments(selectedVideo.value);
-  await loadVideos();
+  await openComments();
+  await loadVideo();
 }
 
 function startReply(comment) {
@@ -222,8 +214,8 @@ function cancelReply() {
   replyTarget.value = null;
 }
 
-function share(video) {
-  navigator.clipboard.writeText(window.location.origin + "/?video=" + video.id);
+function share() {
+  navigator.clipboard.writeText(`${window.location.origin}/video/${video.value.id}`);
   alert("Enlace copiado");
 }
 
@@ -231,116 +223,33 @@ function avatarInitial(username) {
   return (username || "S").charAt(0).toUpperCase();
 }
 
-function profileRoute(video) {
-  if (video.autorId === auth.user?.id) {
-    return "/account";
-  }
-
-  return `/profile/${video.autorId}`;
+function profileRoute(currentVideo) {
+  if (currentVideo.autorId === auth.user?.id) return "/account";
+  return `/profile/${currentVideo.autorId}`;
 }
 
-function showFollowButton(video) {
-  return video.autorId !== auth.user?.id && !video.isFollowing;
-}
-
-function setupAutoPlayback() {
-  playbackObserver?.disconnect();
-
-  const videoElements = Array.from(document.querySelectorAll(".feed .video-player"));
-
-  playbackObserver = new IntersectionObserver(
-    (entries) => {
-      const visibleEntry = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-
-      if (!visibleEntry || visibleEntry.intersectionRatio < 0.65) return;
-
-      const visibleVideoId = visibleEntry.target.dataset.videoId;
-      const changedVisibleVideo = visibleVideoId !== currentVisibleVideoId;
-
-      if (changedVisibleVideo) {
-        currentVisibleVideoId = visibleVideoId;
-        manuallyPausedVideoIds.delete(visibleVideoId);
-      }
-
-      videoElements.forEach((videoElement) => {
-        if (videoElement === visibleEntry.target) {
-          if (manuallyPausedVideoIds.has(visibleVideoId)) return;
-
-          videoElement.muted = false;
-          videoElement.play().catch(() => {});
-          return;
-        }
-
-        if (!videoElement.paused) {
-          autoPausedVideoIds.add(videoElement.dataset.videoId);
-          videoElement.pause();
-        }
-      });
-    },
-    { threshold: [0, 0.35, 0.65, 0.9] }
-  );
-
-  videoElements.forEach((videoElement) => playbackObserver.observe(videoElement));
-
-  if (videoElements[0]) {
-    currentVisibleVideoId = videoElements[0].dataset.videoId;
-    videoElements[0].muted = false;
-    videoElements[0].play().catch(() => {});
-  }
-}
-
-function handleVideoPause(videoId) {
-  const id = String(videoId);
-
-  if (autoPausedVideoIds.has(id)) {
-    autoPausedVideoIds.delete(id);
-    return;
-  }
-
-  if (id !== currentVisibleVideoId) return;
-
-  manuallyPausedVideoIds.add(id);
-}
-
-function handleVideoTap(videoId, event) {
+function handleVideoTap(event) {
   if (event.pointerType === "mouse") return;
 
-  const id = String(videoId);
   const videoElement = event.currentTarget;
-  const isDoubleTap = lastTappedVideoId === id && tapTimer;
 
-  if (isDoubleTap) {
+  if (tapTimer) {
     clearTimeout(tapTimer);
     tapTimer = null;
-    lastTappedVideoId = null;
     return;
   }
 
-  lastTappedVideoId = id;
   tapTimer = setTimeout(() => {
     if (videoElement.paused) {
-      manuallyPausedVideoIds.delete(id);
       videoElement.muted = false;
       videoElement.play().catch(() => {});
     } else {
-      manuallyPausedVideoIds.add(id);
       videoElement.pause();
     }
 
     tapTimer = null;
-    lastTappedVideoId = null;
   }, 220);
 }
 
-onMounted(loadVideos);
-
-onBeforeUnmount(() => {
-  if (tapTimer) clearTimeout(tapTimer);
-  playbackObserver?.disconnect();
-  document.querySelectorAll(".feed .video-player").forEach((videoElement) => {
-    videoElement.pause();
-  });
-});
+onMounted(loadVideo);
 </script>

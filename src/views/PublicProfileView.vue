@@ -53,14 +53,20 @@
         <div v-else-if="uploadedVideos.length === 0" class="empty-state">
           Este usuario aún no subió videos.
         </div>
-        <article v-for="video in uploadedVideos" v-else :key="video.id" class="video-row">
+        <RouterLink
+          v-for="video in uploadedVideos"
+          v-else
+          :key="video.id"
+          class="video-row"
+          :to="`/video/${video.id}`"
+        >
           <video :src="video.videoUrl" muted playsinline></video>
           <div>
             <h3>{{ video.title || "Video sin título" }}</h3>
             <p>@{{ video.autor }}</p>
-            <small>{{ video.likes }} likes · {{ video.vistas }} vistas</small>
+            <small>{{ video.likes }} likes · {{ video.comentarios }} comentarios</small>
           </div>
-        </article>
+        </RouterLink>
       </section>
     </div>
 

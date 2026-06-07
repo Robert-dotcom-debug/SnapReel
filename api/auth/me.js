@@ -9,6 +9,7 @@ function videoFromRecord(record, key = "v") {
   return {
     ...record.get(key).properties,
     autor: record.get("autor"),
+    autorId: record.get("autorId"),
     likes: toNumber(record.get("likes")),
     vistas: toNumber(record.get("vistas")),
     comentarios: toNumber(record.get("comentarios")),
@@ -41,7 +42,7 @@ export default async function handler(req, res) {
         OPTIONAL MATCH (v)<-[:DIO_LIKE]-(l:Usuario)
         OPTIONAL MATCH (v)<-[:VIO]-(viewer:Usuario)
         OPTIONAL MATCH (v)<-[:PERTENECE_A]-(c:Comentario)
-        RETURN v, u.username AS autor,
+        RETURN v, u.username AS autor, u.id AS autorId,
                count(DISTINCT l) AS likes,
                count(DISTINCT viewer) AS vistas,
                count(DISTINCT c) AS comentarios
@@ -56,7 +57,7 @@ export default async function handler(req, res) {
         OPTIONAL MATCH (v)<-[:DIO_LIKE]-(l:Usuario)
         OPTIONAL MATCH (v)<-[:VIO]-(viewer:Usuario)
         OPTIONAL MATCH (v)<-[:PERTENECE_A]-(c:Comentario)
-        RETURN v, author.username AS autor,
+        RETURN v, author.username AS autor, author.id AS autorId,
                count(DISTINCT l) AS likes,
                count(DISTINCT viewer) AS vistas,
                count(DISTINCT c) AS comentarios

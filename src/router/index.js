@@ -5,6 +5,8 @@ import FeedView from "../views/FeedView.vue";
 import UploadView from "../views/UploadView.vue";
 import AccountView from "../views/AccountView.vue";
 import PublicProfileView from "../views/PublicProfileView.vue";
+import HashtagView from "../views/HashtagView.vue";
+import VideoDetailView from "../views/VideoDetailView.vue";
 
 const routes = [
   { path: "/", component: FeedView, meta: { requiresAuth: true } },
@@ -13,6 +15,8 @@ const routes = [
   { path: "/upload", component: UploadView, meta: { requiresAuth: true } },
   { path: "/account", component: AccountView, meta: { requiresAuth: true } },
   { path: "/profile/:userId", component: PublicProfileView, meta: { requiresAuth: true } },
+  { path: "/hashtag/:tag", component: HashtagView, meta: { requiresAuth: true } },
+  { path: "/video/:videoId", component: VideoDetailView, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({

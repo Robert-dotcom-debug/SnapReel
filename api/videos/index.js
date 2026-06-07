@@ -1,5 +1,6 @@
 import { runQuery } from "../../lib/neo4j.js";
 import { verifyToken } from "../../lib/auth.js";
+import { extractHashtags } from "../../lib/hashtags.js";
 
 export default async function handler(req, res) {
   try {
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
                count(DISTINCT l) AS likes,
                count(DISTINCT viewer) AS vistas,
                count(DISTINCT c) AS comentarios
-        ORDER BY v.createdAt DESC
+        ORDER BY rand()
         LIMIT 30
         `,
         { userId: user.id }
@@ -44,6 +45,7 @@ export default async function handler(req, res) {
     if (req.method === "POST") {
       const user = verifyToken(req);
       const { title, description, videoUrl, publicId, thumbnailUrl } = req.body;
+      const hashtags = extractHashtags(description);
 
       const records = await runQuery(
         `
@@ -70,7 +72,22 @@ export default async function handler(req, res) {
         }
       );
 
-      return res.status(201).json(records[0].get("v").properties);
+      const video = records[0].get("v").properties;
+
+      if (hashtags.length > 0) {
+        await runQuery(
+          `
+          MATCH (v:Video {id: $videoId})
+          UNWIND $hashtags AS tag
+          MERGE (h:Hashtag {name: tag})
+          ON CREATE SET h.id = randomUUID(), h.createdAt = datetime()
+          MERGE (v)-[:USA_HASHTAG]->(h)
+          `,
+          { videoId: video.id, hashtags }
+        );
+      }
+
+      return res.status(201).json(video);
     }
 
     return res.status(405).json({ message: "Método no permitido" });

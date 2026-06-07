@@ -29,7 +29,7 @@
         </button>
         <button :class="{ active: activeList === 'liked' }" @click="activeList = 'liked'">
           <Sprout :size="18" />
-          Videos con like
+          Videos que te gustaron
           <strong>{{ stats.videosConLike }}</strong>
         </button>
       </div>
@@ -42,14 +42,20 @@
 
         <div v-if="loading" class="empty-state">Cargando cuenta...</div>
         <div v-else-if="activeVideos.length === 0" class="empty-state">{{ emptyText }}</div>
-        <article v-for="video in activeVideos" v-else :key="video.id" class="video-row">
+        <RouterLink
+          v-for="video in activeVideos"
+          v-else
+          :key="video.id"
+          class="video-row"
+          :to="`/video/${video.id}`"
+        >
           <video :src="video.videoUrl" muted playsinline></video>
           <div>
             <h3>{{ video.title || "Video sin título" }}</h3>
             <p>@{{ video.autor }}</p>
-            <small>{{ video.likes }} likes · {{ video.vistas }} vistas</small>
+            <small>{{ video.likes }} likes · {{ video.comentarios }} comentarios</small>
           </div>
-        </article>
+        </RouterLink>
       </section>
 
       <button class="logout-button" @click="logout">
@@ -91,7 +97,7 @@ const activeVideos = computed(() =>
 );
 
 const listTitle = computed(() =>
-  activeList.value === "uploaded" ? "Tus videos" : "Videos que impulsaste"
+  activeList.value === "uploaded" ? "Tus videos" : "Videos que te gustaron"
 );
 
 const emptyText = computed(() =>

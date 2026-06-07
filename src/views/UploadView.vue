@@ -19,7 +19,7 @@
       <label class="file-drop">
         <Video :size="24" />
         <span>{{ file ? file.name : "Selecciona un video" }}</span>
-        <input type="file" accept="video/*" @change="handleFile" required />
+        <input ref="fileInput" type="file" accept="video/*" @change="handleFile" required />
       </label>
 
       <button :disabled="loading">
@@ -27,9 +27,22 @@
         <UploadCloud v-else :size="18" />
         {{ loading ? "Subiendo..." : "Publicar" }}
       </button>
-
-      <p v-if="message" class="status-message">{{ message }}</p>
     </form>
+
+    <div v-if="flash.open" class="flash-overlay" @click.self="closeFlash">
+      <div class="flash-dialog">
+        <h2>{{ flash.title }}</h2>
+        <p>{{ flash.message }}</p>
+        <div class="flash-actions single">
+          <button
+            :class="flash.type === 'success' ? 'flash-confirm' : 'flash-cancel'"
+            @click="closeFlash"
+          >
+            {{ flash.type === "success" ? "OK" : "Intentar de nuevo" }}
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -41,18 +54,47 @@ import api from "../services/api";
 const title = ref("");
 const description = ref("");
 const file = ref(null);
+const fileInput = ref(null);
 const loading = ref(false);
-const message = ref("");
+const flash = ref({
+  open: false,
+  type: "success",
+  title: "",
+  message: "",
+});
 
 function handleFile(event) {
   file.value = event.target.files[0];
+}
+
+function showFlash(type, title, message) {
+  flash.value = {
+    open: true,
+    type,
+    title,
+    message,
+  };
+}
+
+function closeFlash() {
+  flash.value.open = false;
+}
+
+function resetForm() {
+  title.value = "";
+  description.value = "";
+  file.value = null;
+
+  if (fileInput.value) {
+    fileInput.value.value = "";
+  }
 }
 
 async function uploadVideo() {
   if (!file.value) return;
 
   loading.value = true;
-  message.value = "";
+  closeFlash();
 
   try {
     const { data: signatureData } = await api.post("/api/videos/upload-signature");
@@ -73,6 +115,10 @@ async function uploadVideo() {
 
     const uploaded = await uploadResponse.json();
 
+    if (!uploadResponse.ok || !uploaded.secure_url) {
+      throw new Error("Cloudinary upload failed");
+    }
+
     await api.post("/api/videos", {
       title: title.value,
       description: description.value,
@@ -81,12 +127,10 @@ async function uploadVideo() {
       thumbnailUrl: uploaded.secure_url.replace(".mp4", ".jpg"),
     });
 
-    title.value = "";
-    description.value = "";
-    file.value = null;
-    message.value = "Video publicado correctamente";
+    resetForm();
+    showFlash("success", "Video publicado", "Video publicado correctamente.");
   } catch (error) {
-    message.value = "Error al subir el video";
+    showFlash("error", "No se pudo subir", "Error al subir el video.");
   } finally {
     loading.value = false;
   }
